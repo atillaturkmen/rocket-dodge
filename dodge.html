@@ -76,9 +76,9 @@
     </style>
 </head>
 
-<body onload = "initializeCanvas()">
+<body onload = "myGameArea.initialize()">
 
-    <div id="tutorial" onclick="startGame()">
+    <div id="tutorial" onclick="myGameArea.start()">
         <div id="text1">Avoid red dots, make them collide with each other to gain points. Pause with esc, steer with arrows or wasd.<br><br>Click anywhere or press spacebar to start</div>
     </div>
 
@@ -92,18 +92,20 @@
 
     <script>
         const fps = 60; // frame number per second
-        const speed = 10; // how many pixels the player moves in one frame  
-        const missileColor = "red";
-        const playerColor = "black";
-        const playerHeadColor = "grey";
-        const missileSize = 20;
+        const speed = 10; // how many pixels the player moves in one frame
+        const missileColor = "red"; // color of the components chasing the player
+        const playerColor = "black"; // color of the player
+        const playerHeadColor = "grey"; // color of the player's head
+        const missileSize = 20; // the length of one edge of the square missile in pixels
         const difficulty = 1; // changes missile speed increse rate
-        const rotateSpeed = 6;
-        let missileInterval = 150;
-        let missileSpeed = 4; // how many pixels missiles move in one frame
+        const rotateSpeed = 6; // player's rotation speed
+        const initialMissileInterval = 150; // how often the missiles appear initially in miliseconds
+        const initialMissileSpeed = 4; // how many pixels missiles move in one frame initially
 
         let myGamePiece; // rocket that the player controls
         let missiles = []; // array which contains hostile missiles
+        let missileInterval = initialMissileInterval;
+        let missileSpeed = initialMissileSpeed;
         let keyBoardButtons = {
             left: [65, 37],
             up: [87, 38],
@@ -112,77 +114,82 @@
             esc: 27,
             space: 32,
         };
-        let rightPressed, leftPressed, upPressed, downPressed, escPressed = false;
+        let rightPressed, leftPressed, upPressed, downPressed = false;
         let score = 0;
-        let scoreCounter = new IntervalTimer(() => {score++}, 1000);
-        let started = 0;
-
-        //initializes the canvas element
-        function initializeCanvas() {
-            window.addEventListener('keydown', (event) => {
-                if (event.keyCode == keyBoardButtons.space) {
-                    startGame();
-                }
-            }, false);
-            myGameArea.initialize();
-        }
-        //main function, starts the game
-        function startGame() {
-            document.getElementById("tutorial").style.display = "none";
-            if (!started) {
-                myGameArea.start(); // start the game
-                started = 1;
-            }
-        }
 
         //contains canvas and canvas related methods
         var myGameArea = {
             canvas: document.createElement("canvas"), // create the canvas
             //initialize the canvas
             initialize: function () {
+                this.started = false;
+                this.ongoing = false; // true if game has started and hasn't ended yet (pausing does not count)
+                this.paused = false; // true if game is paused
+                //proccess pressed buttons
+                window.addEventListener('keydown', keyDownHandler, false);
+                window.addEventListener('keyup', keyUpHandler, false);
                 this.canvas.width = window.innerWidth; // set canvas width to window width
                 this.canvas.height = window.innerHeight; // set canvas height to window height
                 this.context = this.canvas.getContext("2d"); // context field provides access to various useful canvas methods
                 document.body.appendChild(this.canvas); // insert canvas into html
                 myGamePiece = new player(10, 60, playerColor, playerHeadColor,225, 225); // initialize player
                 myGamePiece.update();
-                scoreCounter.pause();
             },
-            //start game by starting interval
+            // start game by starting interval
             start: function () {
-                this.frameNo = 0; // this value increases with every frame from now on
-                this.interval = new IntervalTimer(updateGameArea, 1000 / fps);
-                //proccess pressed buttons
-                window.addEventListener('keydown', keyDownHandler, false);
-                window.addEventListener('keyup', keyUpHandler, false);
-                scoreCounter.resume();
+                if (!this.ongoing) {
+                    this.started = true;
+                    this.ongoing = true;
+                    document.getElementById("tutorial").style.display = "none";
+                    this.frameNo = 0; // this value increases with every frame from now on
+                    this.interval = new IntervalTimer(updateGameArea, 1000 / fps);
+                    this.scoreCounter = new IntervalTimer(() => {score++}, 1000); // score increases by one every second
+                }
             },
+            // pauses the game
             pause: function () {
-                this.interval.pause();
-                document.getElementById("pause").style.display = "block";
+                if (!this.paused && this.ongoing) {
+                    this.paused = true;
+                    document.getElementById("pause").style.display = "block";
+                    this.scoreCounter.pause();
+                    this.interval.pause();
+                }
             },
+            // resumes the game
             resume: function () {
-                document.getElementById("pause").style.display = "none";
-                this.interval.resume();
+                if (this.paused && this.ongoing) {
+                    this.paused = false;
+                    document.getElementById("pause").style.display = "none";
+                    this.scoreCounter.resume();
+                    this.interval.resume();
+                }
             },
-            // stops update game area interval
+            // stops updating the game area
             gameover: function () {
+                this.ongoing = false;
                 this.interval.pause();
-                scoreCounter.pause();
+                this.scoreCounter.pause();
                 document.getElementById("gameover").children[0].innerHTML = "GAME OVER<br>Your Score: " + score;
                 document.getElementById("gameover").style.display = "block";
-                window.removeEventListener('keydown', keyDownHandler, false);
-                window.removeEventListener('keyup', keyUpHandler, false);
-                window.addEventListener("keydown", (event) => {
-                    if (event.keyCode == keyBoardButtons.space) {
-                        location.reload();
-                    }
-                }, false);
+            },
+            // restarts the game
+            restart: function () {
+                if (!this.ongoing) {
+                    this.ongoing = true;
+                    document.getElementById("gameover").style.display = "none";
+                    document.getElementById("tutorial").style.display = "block";
+                    score = 0;
+                    missileInterval = initialMissileInterval;
+                    missileSpeed = initialMissileSpeed;
+                    missiles.length = 0;
+                    rightPressed, leftPressed, upPressed, downPressed = false;
+                    this.initialize();
+                }
             },
             // clears canvas
             clear: function () {
                 this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            }
+            },
         }
 
         function player(width, height, color, headColor, x, y) {
@@ -299,6 +306,7 @@
         }
 
         function updateGameArea() {
+            myGameArea.frameNo++;
             // check if player collides with one of missiles
             for (i = 0; i < missiles.length; i++) {
                 if (myGamePiece.crashWith(missiles[i])) {
@@ -313,14 +321,15 @@
                     }
                 }
             }
+            // clear last frame
             myGameArea.clear();
-            myGameArea.frameNo++;
+            // resize the canvas if window size has changed
             if ((window.innerWidth != myGameArea.canvas.width) || (window.innerHeight != myGameArea.canvas.height)) {
                 myGameArea.canvas.width = window.innerWidth;
                 myGameArea.canvas.height = window.innerHeight;
             }
             // create new hostile missile every initialMissileInterval frames
-            if (everyinterval(missileInterval)) {
+            if ((myGameArea.frameNo / missileInterval) % 1 == 0) {
                 let x;
                 let y;
                 if (Math.random() < 0.5) {
@@ -362,13 +371,6 @@
             myGamePiece.update();
         }
 
-        function everyinterval(n) {
-            if ((myGameArea.frameNo / n) % 1 == 0) {
-                return true;
-            }
-            return false;
-        }
-
         function keyDownHandler(event) {
             if (keyBoardButtons.right.includes(event.keyCode)) {
                 event.preventDefault();
@@ -386,17 +388,22 @@
                 event.preventDefault();
                 upPressed = true;
             }
-            if (keyBoardButtons.esc == event.keyCode) {
+            if (event.keyCode == keyBoardButtons.esc) {
                 event.preventDefault();
-                if (escPressed) {
+                if (myGameArea.paused) {
                     myGameArea.resume();
-                    scoreCounter.resume();
-                    escPressed = false;
                 }
                 else {
                     myGameArea.pause();
-                    scoreCounter.pause();
-                    escPressed = true;
+                }
+            }
+            if (event.keyCode == keyBoardButtons.space) {
+                event.preventDefault();
+                if (!myGameArea.started) {
+                    myGameArea.start();
+                }
+                else {
+                    myGameArea.restart();
                 }
             }
         }
