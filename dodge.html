@@ -33,7 +33,7 @@
             cursor: pointer;
             display: block;
         }
-        .overlayText {
+        .overlay-text {
             position: absolute;
             top: 50%;
             left: 50%;
@@ -48,15 +48,15 @@
 <body onload = "myGameArea.initialize()">
 
     <div id="tutorial" class="overlay tutorial" onclick="myGameArea.start()">
-        <div id="tutorialText" class="overlayText">Avoid red dots, make them collide with each other to gain points. Pause with esc, steer with arrows or wasd.<br><br>Click anywhere or press spacebar to start</div>
+        <div id="tutorialText" class="overlay-text">Avoid red dots, make them collide with each other to gain points. Pause with esc, steer with arrows or wasd.<br><br>Click anywhere or press spacebar to start</div>
     </div>
 
     <div id="pause" class="overlay">
-        <div id="pauseText" class="overlayText">Press ESC to resume</div>
+        <div id="pauseText" class="overlay-text">Press ESC to resume</div>
     </div>
 
     <div id="gameover" class="overlay">
-        <div id="gameOverText" class="overlayText"></div>
+        <div id="gameOverText" class="overlay-text"></div>
     </div>
 
     <script>
