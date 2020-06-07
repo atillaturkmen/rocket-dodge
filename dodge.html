@@ -60,6 +60,7 @@
     </div>
 
     <script>
+        // variables below can be changed arbitrarily
         const fps = 60; // frame number per second
         const speed = 10; // how many pixels the player moves in one frame
         const missileColor = "red"; // color of the components chasing the player
@@ -73,9 +74,9 @@
         const initialMissileSpeed = 4; // how many pixels missiles move in one frame initially
 
         let myGamePiece; // rocket that the player controls
-        let missiles = []; // array which contains hostile missiles
-        let missileInterval = initialMissileInterval;
-        let missileSpeed = initialMissileSpeed;
+        let missiles; // array which contains hostile missiles
+        let missileInterval;
+        let missileSpeed;
         let keyBoardButtons = {
             left: [65, 37],
             up: [87, 38],
@@ -84,7 +85,7 @@
             esc: 27,
             space: 32,
         };
-        let rightPressed, leftPressed, upPressed, downPressed = false;
+        let rightPressed, leftPressed, upPressed, downPressed;
         let score = 0;
 
         //contains canvas and canvas related methods
@@ -92,26 +93,35 @@
             canvas: document.createElement("canvas"), // create the canvas
             //initialize the canvas
             initialize: function () {
-                this.started = false;
+                this.started = false; // true if game has started
                 this.ongoing = false; // true if game has started and hasn't ended yet (pausing does not count)
                 this.paused = false; // true if game is paused
+
                 //proccess pressed buttons
                 window.addEventListener('keydown', keyDownHandler, false);
                 window.addEventListener('keyup', keyUpHandler, false);
+
                 this.canvas.width = window.innerWidth; // set canvas width to window width
                 this.canvas.height = window.innerHeight; // set canvas height to window height
+
                 this.context = this.canvas.getContext("2d"); // context field provides access to various useful canvas methods
                 document.body.appendChild(this.canvas); // insert canvas into html
+                
                 myGamePiece = new player(10, 60, playerColor, playerHeadColor,225, 225); // initialize player
                 myGamePiece.update();
+                printScore(score);
             },
             // start game by starting interval
             start: function () {
                 if (!this.ongoing) {
+                    this.frameNo = 0; // this value increases with every frame from now on
                     this.started = true;
                     this.ongoing = true;
+                    rightPressed, leftPressed, upPressed, downPressed = false;
+                    missiles = [];
+                    missileInterval = initialMissileInterval;
+                    missileSpeed = initialMissileSpeed;
                     document.getElementById("tutorial").style.display = "none";
-                    this.frameNo = 0; // this value increases with every frame from now on
                     this.interval = new IntervalTimer(updateGameArea, 1000 / fps);
                     this.scoreCounter = new IntervalTimer(() => {score++}, 1000); // score increases by one every second
                 }
@@ -145,14 +155,9 @@
             // restarts the game
             restart: function () {
                 if (!this.ongoing) {
-                    this.ongoing = true;
                     document.getElementById("gameover").style.display = "none";
                     document.getElementById("tutorial").style.display = "block";
                     score = 0;
-                    missileInterval = initialMissileInterval;
-                    missileSpeed = initialMissileSpeed;
-                    missiles.length = 0;
-                    rightPressed, leftPressed, upPressed, downPressed = false;
                     this.initialize();
                 }
             },
@@ -166,37 +171,38 @@
             this.width = width;
             this.height = height;
             this.speed = 0;
-            this.angle = 0;
-            this.moveAngle = 0;
-            this.currentAngle = 0;
+            this.angle = 0; // angle change in one frame in radians
+            this.moveAngle = 0; // angle change in one frame in degrees
+            this.currentAngle = 0; // where the player is facing right now
             this.x = x;
             this.y = y;
+            // update component position
+            this.newPos = function () {
+                this.currentAngle += this.moveAngle; // add angle change to current angle
+                // keep current angle between 0 and 360
+                if (this.currentAngle < 0) {
+                    this.currentAngle += 360;
+                } else if (this.currentAngle >= 360) {
+                    this.currentAngle -= 360;
+                }
+                this.angle += this.moveAngle * Math.PI / 180; // translate angle into radians
+                // change player coordinates according to the angle
+                // y is being subtracted while x is being added because y coordinate gets greater downwards in html canvas
+                this.x += this.speed * Math.sin(this.angle);
+                this.y -= this.speed * Math.cos(this.angle);
+            }
+            // updates newly positioned component on the canvas
+            // probably the most complicated method of the game
             this.update = function () {
-                ctx = myGameArea.context;
-                ctx.font = "30px Arial";
-                ctx.fillStyle = scoreTextColor;
-                ctx.fillText("Score: " + score, 10, 50);
+                let ctx = myGameArea.context;
                 ctx.save(); // save current canvas
                 ctx.translate(this.x, this.y); // canvas origin is now x, y
                 ctx.rotate(this.angle); // rotate the canvas so that rectangle rotates
-                ctx.fillStyle = color; // set fill color
+                ctx.fillStyle = color; // set fill color of players main part
                 ctx.fillRect(this.width / -2, this.height / -2, this.width, this.height); // paint the rectangle
                 ctx.fillStyle = headColor;
                 ctx.fillRect(this.width / -2, this.height / -2, this.width, this.height / 5);
-                ctx.restore(); //return previous state and attributes
-            }
-            // update component position
-            this.newPos = function () {
-                this.currentAngle += this.moveAngle;
-                if (this.currentAngle < 0) {
-                    this.currentAngle += 360;
-                }
-                else if (this.currentAngle >= 360) {
-                    this.currentAngle -= 360;
-                }
-                this.angle += this.moveAngle * Math.PI / 180;
-                this.x += this.speed * Math.sin(this.angle);
-                this.y -= this.speed * Math.cos(this.angle);
+                ctx.restore(); //return previous state and attributes of canvas
             }
             // do not let player leave the screen
             this.inBounds = function () {
@@ -244,18 +250,20 @@
             this.currentAngle = 0;
             this.x = x;
             this.y = y;
-            this.update = function () {
-                ctx = myGameArea.context;
-                ctx.fillStyle = color;
-                ctx.fillRect(this.x, this.y, this.width, this.height);
-            }
             // updates component position
             this.newPos = function () {
-                this.dx = myGamePiece.x - this.x;
-                this.dy = myGamePiece.y - this.y;
-                this.distance = Math.sqrt((this.dx*this.dx) + (this.dy*this.dy));
-                this.x += this.speed * (this.dx/this.distance);
-                this.y += this.speed * (this.dy/this.distance);
+                this.dx = myGamePiece.x - this.x; // distance to the player in x dimension
+                this.dy = myGamePiece.y - this.y; // distance to the player in y dimension
+                this.distance = Math.sqrt((this.dx * this.dx) + (this.dy * this.dy)); // distance to the player
+                // coordinate assigments below keep the missile on the path between itself and the player
+                this.x += this.speed * (this.dx / this.distance);
+                this.y += this.speed * (this.dy / this.distance);
+            }
+            // updates newly positioned component on the canvas
+            this.update = function () {
+                let ctx = myGameArea.context;
+                ctx.fillStyle = color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
             }
             // this method checks if this object crashes with other object
             this.crashWith = function (otherobj) {
@@ -275,6 +283,7 @@
             }
         }
 
+        // this method updates the game area, is called every frame
         function updateGameArea() {
             myGameArea.frameNo++;
             // check if player collides with one of missiles
@@ -298,7 +307,7 @@
                 myGameArea.canvas.width = window.innerWidth;
                 myGameArea.canvas.height = window.innerHeight;
             }
-            // create new hostile missile every initialMissileInterval frames
+            // create new hostile missile every missileInterval frames
             if ((myGameArea.frameNo / missileInterval) % 1 == 0) {
                 let x;
                 let y;
@@ -339,6 +348,50 @@
             myGamePiece.inBounds();
             myGamePiece.newPos();
             myGamePiece.update();
+            printScore(score);
+        }
+
+        // prints the score on canvas
+        function printScore (score) {
+            let ctx = myGameArea.context;
+            ctx.font = "30px Arial";
+            ctx.fillStyle = scoreTextColor;
+            ctx.fillText("Score: " + score, 10, 50);
+        }
+
+        // this object creates pauseable intervals
+        function IntervalTimer(callback, interval) {
+            var timerId, startTime, remaining = 0;
+            var state = 0; //  0 = idle, 1 = running, 2 = paused, 3= resumed
+
+            this.pause = function () {
+                if (state != 1) return;
+
+                remaining = interval - (new Date() - startTime);
+                window.clearInterval(timerId);
+                state = 2;
+            };
+
+            this.resume = function () {
+                if (state != 2) return;
+
+                state = 3;
+                window.setTimeout(this.timeoutCallback, remaining);
+            };
+
+            this.timeoutCallback = function () {
+                if (state != 3) return;
+
+                callback();
+
+                startTime = new Date();
+                timerId = window.setInterval(callback, interval);
+                state = 1;
+            };
+
+            startTime = new Date();
+            timerId = window.setInterval(callback, interval);
+            state = 1;
         }
 
         function keyDownHandler(event) {
@@ -391,40 +444,6 @@
             if (keyBoardButtons.up.includes(event.keyCode)) {
                 upPressed = false;
             }
-        }
-        
-        function IntervalTimer(callback, interval) {
-            var timerId, startTime, remaining = 0;
-            var state = 0; //  0 = idle, 1 = running, 2 = paused, 3= resumed
-
-            this.pause = function () {
-                if (state != 1) return;
-
-                remaining = interval - (new Date() - startTime);
-                window.clearInterval(timerId);
-                state = 2;
-            };
-
-            this.resume = function () {
-                if (state != 2) return;
-
-                state = 3;
-                window.setTimeout(this.timeoutCallback, remaining);
-            };
-
-            this.timeoutCallback = function () {
-                if (state != 3) return;
-
-                callback();
-
-                startTime = new Date();
-                timerId = window.setInterval(callback, interval);
-                state = 1;
-            };
-
-            startTime = new Date();
-            timerId = window.setInterval(callback, interval);
-            state = 1;
         }
     </script>
 
