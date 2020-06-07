@@ -48,7 +48,7 @@
 <body onload = "myGameArea.initialize()">
 
     <div id="tutorial" class="overlay tutorial" onclick="myGameArea.start()">
-        <div id="tutorialText" class="overlay-text">Avoid red dots, make them collide with each other to gain points. Pause with esc, steer with arrows or wasd.<br><br>Click anywhere or press spacebar to start</div>
+        <div id="tutorialText" class="overlay-text">Avoid the dots, make them collide with each other to gain points. Pause with esc, steer with arrows or wasd. Press B to toggle dark mode.<br><br>Click anywhere or press spacebar to start</div>
     </div>
 
     <div id="pause" class="overlay">
@@ -63,28 +63,20 @@
         // variables below can be changed arbitrarily
         const fps = 60; // frame number per second
         const speed = 10; // how many pixels the player moves in one frame
-        const missileColor = "red"; // color of the components chasing the player
-        const playerColor = "black"; // color of the player
-        const playerHeadColor = "grey"; // color of the player's head
-        const scoreTextColor = "black"; // color of the score text color
         const missileSize = 20; // the length of one edge of the square missile in pixels
         const difficulty = 1; // changes missile speed increse rate
         const rotateSpeed = 6; // player's rotation speed
         const initialMissileInterval = 150; // how often the missiles appear initially in miliseconds
         const initialMissileSpeed = 4; // how many pixels missiles move in one frame initially
+        let missileColor = "red"; // color of the components chasing the player
+        let playerColor = "black"; // color of the player
+        let playerHeadColor = "grey"; // color of the player's head
+        let scoreTextColor = "black"; // color of the score text color
 
         let myGamePiece; // rocket that the player controls
-        let missiles; // array which contains hostile missiles
+        let missiles = []; // array which contains hostile missiles
         let missileInterval;
         let missileSpeed;
-        let keyBoardButtons = {
-            left: [65, 37],
-            up: [87, 38],
-            right: [68, 39],
-            down: [83, 40],
-            esc: 27,
-            space: 32,
-        };
         let rightPressed, leftPressed, upPressed, downPressed;
         let score = 0;
 
@@ -107,7 +99,7 @@
                 this.context = this.canvas.getContext("2d"); // context field provides access to various useful canvas methods
                 document.body.appendChild(this.canvas); // insert canvas into html
                 
-                myGamePiece = new player(10, 60, playerColor, playerHeadColor,225, 225); // initialize player
+                myGamePiece = new player(10, 60, playerColor, playerHeadColor, 225, 225); // initialize player
                 myGamePiece.update();
                 printScore(score);
             },
@@ -158,6 +150,7 @@
                     document.getElementById("gameover").style.display = "none";
                     document.getElementById("tutorial").style.display = "block";
                     score = 0;
+                    missiles.length = 0;
                     this.initialize();
                 }
             },
@@ -171,6 +164,8 @@
             this.width = width;
             this.height = height;
             this.speed = 0;
+            this.color = color;
+            this.headColor = headColor;
             this.angle = 0; // angle change in one frame in radians
             this.moveAngle = 0; // angle change in one frame in degrees
             this.currentAngle = 0; // where the player is facing right now
@@ -198,9 +193,9 @@
                 ctx.save(); // save current canvas
                 ctx.translate(this.x, this.y); // canvas origin is now x, y
                 ctx.rotate(this.angle); // rotate the canvas so that rectangle rotates
-                ctx.fillStyle = color; // set fill color of players main part
+                ctx.fillStyle = this.color; // set fill color of players main part
                 ctx.fillRect(this.width / -2, this.height / -2, this.width, this.height); // paint the rectangle
-                ctx.fillStyle = headColor;
+                ctx.fillStyle = this.headColor;
                 ctx.fillRect(this.width / -2, this.height / -2, this.width, this.height / 5);
                 ctx.restore(); //return previous state and attributes of canvas
             }
@@ -245,6 +240,7 @@
             this.width = width;
             this.height = height;
             this.speed = speed;
+            this.color = color;
             this.angle = 0;
             this.moveAngle = 0;
             this.currentAngle = 0;
@@ -262,7 +258,7 @@
             // updates newly positioned component on the canvas
             this.update = function () {
                 let ctx = myGameArea.context;
-                ctx.fillStyle = color;
+                ctx.fillStyle = this.color;
                 ctx.fillRect(this.x, this.y, this.width, this.height);
             }
             // this method checks if this object crashes with other object
@@ -395,23 +391,23 @@
         }
 
         function keyDownHandler(event) {
-            if (keyBoardButtons.right.includes(event.keyCode)) {
+            if (event.key == "ArrowRight" || event.key == "d") {
                 event.preventDefault();
                 rightPressed = true;
             }
-            if (keyBoardButtons.left.includes(event.keyCode)) {
+            if (event.key == "ArrowLeft" || event.key == "a") {
                 event.preventDefault();
                 leftPressed = true;
             }
-            if (keyBoardButtons.down.includes(event.keyCode)) {
+            if (event.key == "ArrowDown" || event.key == "s") {
                 event.preventDefault();
                 downPressed = true;
             }
-            if (keyBoardButtons.up.includes(event.keyCode)) {
+            if (event.key == "ArrowUp" || event.key == "w") {
                 event.preventDefault();
                 upPressed = true;
             }
-            if (event.keyCode == keyBoardButtons.esc) {
+            if (event.key == "Escape") {
                 event.preventDefault();
                 if (myGameArea.paused) {
                     myGameArea.resume();
@@ -420,7 +416,7 @@
                     myGameArea.pause();
                 }
             }
-            if (event.keyCode == keyBoardButtons.space) {
+            if (event.code == "Space") {
                 event.preventDefault();
                 if (!myGameArea.started) {
                     myGameArea.start();
@@ -429,19 +425,68 @@
                     myGameArea.restart();
                 }
             }
+            if (event.key == "b") {
+                event.preventDefault();
+                if (!myGameArea.dark) {
+                    myGameArea.dark = true;
+
+                    missileColor = "#998FC7";
+                    playerColor = "#E0DBE7";
+                    playerHeadColor = "#5FC5D1";
+                    scoreTextColor = "#E0E1DD";
+
+                    // set background color
+                    document.body.style.backgroundColor = "#0D1821";
+                    document.getElementsByTagName("canvas")[0].style.backgroundColor = "#0D1821";
+
+                    // change the color of all text elements
+                    let overlayText = document.getElementsByClassName("overlay-text");
+                    for (i = 0; i < overlayText.length; i++) {
+                        overlayText[i].style.color = "#E0E1DD";
+                    }
+                }
+                else {
+                    myGameArea.dark = false;
+
+                    missileColor = "red";
+                    playerColor = "black";
+                    playerHeadColor = "grey";
+                    scoreTextColor = "black";
+
+                    // set background color
+                    document.body.style.backgroundColor = "#09daff";
+                    document.getElementsByTagName("canvas")[0].style.backgroundColor = "#09daff";
+
+                    // change the color of all text elements
+                    let overlayText = document.getElementsByClassName("overlay-text");
+                    for (i = 0; i < overlayText.length; i++) {
+                        overlayText[i].style.color = "white";
+                    }
+                }
+                // change the color of missiles
+                for (i = 0; i < missiles.length; i++) {
+                        missiles[i].color = missileColor;
+                        missiles[i].update();
+                }
+                // set color of the player
+                myGamePiece.color = playerColor;
+                myGamePiece.headColor = playerHeadColor;
+                myGamePiece.update();
+                printScore(score);
+            }
         }
 
         function keyUpHandler(event) {
-            if (keyBoardButtons.right.includes(event.keyCode)) {
+            if (event.key == "ArrowRight" || event.key == "d") {
                 rightPressed = false;
             }
-            if (keyBoardButtons.left.includes(event.keyCode)) {
+            if (event.key == "ArrowLeft" || event.key == "a") {
                 leftPressed = false;
             }
-            if (keyBoardButtons.down.includes(event.keyCode)) {
+            if (event.key == "ArrowDown" || event.key == "s") {
                 downPressed = false;
             }
-            if (keyBoardButtons.up.includes(event.keyCode)) {
+            if (event.key == "ArrowUp" || event.key == "w") {
                 upPressed = false;
             }
         }
