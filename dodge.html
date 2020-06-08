@@ -110,7 +110,6 @@
                     this.started = true;
                     this.ongoing = true;
                     rightPressed, leftPressed, upPressed, downPressed = false;
-                    missiles = [];
                     missileInterval = initialMissileInterval;
                     missileSpeed = initialMissileSpeed;
                     document.getElementById("tutorial").style.display = "none";
@@ -425,43 +424,35 @@
                     myGameArea.restart();
                 }
             }
+            //toggle dark mode
             if (event.key == "b") {
                 event.preventDefault();
+                let backgroundColor, textColor;
                 if (!myGameArea.dark) {
                     myGameArea.dark = true;
-
                     missileColor = "#998FC7";
                     playerColor = "#E0DBE7";
                     playerHeadColor = "#5FC5D1";
                     scoreTextColor = "#E0E1DD";
-
-                    // set background color
-                    document.body.style.backgroundColor = "#0D1821";
-                    document.getElementsByTagName("canvas")[0].style.backgroundColor = "#0D1821";
-
-                    // change the color of all text elements
-                    let overlayText = document.getElementsByClassName("overlay-text");
-                    for (i = 0; i < overlayText.length; i++) {
-                        overlayText[i].style.color = "#E0E1DD";
-                    }
+                    backgroundColor = "#0D1821";
+                    textColor = "#E0E1DD";
                 }
                 else {
                     myGameArea.dark = false;
-
                     missileColor = "red";
                     playerColor = "black";
                     playerHeadColor = "grey";
                     scoreTextColor = "black";
-
-                    // set background color
-                    document.body.style.backgroundColor = "#09daff";
-                    document.getElementsByTagName("canvas")[0].style.backgroundColor = "#09daff";
-
-                    // change the color of all text elements
-                    let overlayText = document.getElementsByClassName("overlay-text");
-                    for (i = 0; i < overlayText.length; i++) {
-                        overlayText[i].style.color = "white";
-                    }
+                    backgroundColor = "#09daff";
+                    textColor = "white";
+                }
+                // set background color
+                document.body.style.backgroundColor = backgroundColor;
+                document.getElementsByTagName("canvas")[0].style.backgroundColor = backgroundColor;
+                // change the color of all text elements
+                let overlayText = document.getElementsByClassName("overlay-text");
+                for (i = 0; i < overlayText.length; i++) {
+                    overlayText[i].style.color = textColor;
                 }
                 // change the color of missiles
                 for (i = 0; i < missiles.length; i++) {
