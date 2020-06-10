@@ -92,6 +92,12 @@
                 //proccess pressed buttons
                 window.addEventListener('keydown', keyDownHandler, false);
                 window.addEventListener('keyup', keyUpHandler, false);
+                // pause the game if window is on background
+                window.addEventListener("visibilitychange", () => {
+                    if (document.hidden) {
+                        myGameArea.pause();
+                    }
+                }, false);
 
                 this.canvas.width = window.innerWidth; // set canvas width to window width
                 this.canvas.height = window.innerHeight; // set canvas height to window height
